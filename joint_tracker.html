@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>精密関節痛＆前日ライフログロケーター v13</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
+
+    <div class="max-w-md mx-auto px-4 py-6">
+        <header class="mb-4 text-center">
+            <h1 class="text-xl font-bold text-slate-900">関節痛＆前日ライフログ</h1>
+            <p class="text-xs text-slate-500 mt-0.5">【v13】Googleスプレッドシート・クラウド同期対応版</p>
+        </header>
+
+        <div class="mb-4 bg-slate-900 text-white p-3 rounded-2xl shadow-sm text-xs">
+            <details class="group">
+                <summary class="font-bold cursor-pointer flex justify-between items-center select-none">
+                    <span>☁️ Googleスプレッドシート同期設定</span>
+                    <span class="transition-transform group-open:rotate-180">▼</span>
+                </summary>
+                <div class="mt-2.5 pt-2.5 border-t border-slate-700 space-y-2">
+                    <p class="text-slate-400 text-[11px]">GASで発行した「WebアプリURL」が組み込まれています。変更がない限りこのままで問題ありません。</p>
+                    <input type="url" id="gasUrl" value="https://script.google.com/macros/s/AKfycbzQHh3MaP4owsHfMJvdX2Oql_1NmKcTIQpdWZ_1S_akFRsdTfgGYMVE1YlAcvWkLMbd/exec" placeholder="https://script.google.com/macros/s/.../exec" 
+                        class="w-full p-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-blue-500">
+                </div>
+            </details>
+        </div>
+
+        <form id="trackerForm" class="space-y-4">
+            
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">現在の記録日時（痛みの発生時）</label>
+                <input type="datetime-local" id="datetime" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">痛む部位の選択</label>
+                
+                <div class="flex bg-slate-100 p-1 rounded-xl text-[11px] font-bold overflow-x-auto no-scrollbar gap-0.5">
+                    <button type="button" onclick="switchMap('upper-front')" id="tab-upper-front" class="flex-1 text-center py-2 rounded-lg transition-all bg-white shadow-sm text-blue-600">上半身 前</button>
+                    <button type="button" onclick="switchMap('upper-back')" id="tab-upper-back" class="flex-1 text-center py-2 rounded-lg transition-all text-slate-600">上半身 後</button>
+                    <button type="button" onclick="switchMap('lower')" id="tab-lower" class="flex-1 text-center py-2 rounded-lg transition-all text-slate-600">下半身</button>
+                    <button type="button" onclick="switchMap('hand')" id="tab-hand" class="flex-1 text-center py-2 rounded-lg transition-all text-slate-600">手指 拡大</button>
+                    <button type="button" onclick="switchMap('foot')" id="tab-foot" class="flex-1 text-center py-2 rounded-lg transition-all text-slate-600">足指 拡大</button>
+                </div>
+
+                <div id="side-switcher" class="hidden flex justify-center gap-2 pt-1">
+                    <button type="button" id="side-left" onclick="setSide('左')" class="px-4 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-700">左側 (Left)</button>
+                    <button type="button" id="side-right" onclick="setSide('右')" class="px-4 py-1.5 rounded-full text-xs font-bold border border-blue-500 bg-blue-50 text-blue-600">右側 (Right)</button>
+                </div>
+
+                <div class="relative bg-slate-900 rounded-xl flex justify-center items-center py-4 shadow-inner overflow-hidden min-h-[300px]">
+                    <svg id="map-upper-front" class="map-view w-auto h-[280px]" viewBox="0 0 240 240">
+                        <circle cx="120" cy="45" r="18" fill="#334155"/>
+                        <path d="M 110 60 L 130 60 L 134 80 L 106 80 Z" fill="#334155"/>
+                        <path d="M 65 90 L 175 90 L 160 210 L 80 210 Z" fill="#334155"/>
+                        <line x1="65" y1="90" x2="35" y2="150" stroke="#334155" stroke-width="18" stroke-linecap="round"/>
+                        <line x1="35" y1="150" x2="15" y2="205" stroke="#334155" stroke-width="14" stroke-linecap="round"/>
+                        <line x1="175" y1="90" x2="205" y2="150" stroke="#334155" stroke-width="18" stroke-linecap="round"/>
+                        <line x1="205" y1="150" x2="225" y2="205" stroke="#334155" stroke-width="14" stroke-linecap="round"/>
+                        
+                        <g class="joint" data-type="body" data-name="頭部"><circle cx="120" cy="35" r="12" fill="transparent"/><circle cx="120" cy="35" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="右顎関節"><circle cx="107" cy="51" r="12" fill="transparent"/><circle cx="107" cy="51" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="左顎関節"><circle cx="133" cy="51" r="12" fill="transparent"/><circle cx="133" cy="51" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="首（右・前）"><circle cx="106" cy="72" r="14" fill="transparent"/><circle cx="106" cy="72" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="首（中央・前）"><circle cx="120" cy="74" r="14" fill="transparent"/><circle cx="120" cy="74" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="首（左・前）"><circle cx="134" cy="72" r="14" fill="transparent"/><circle cx="134" cy="72" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="右肩（前面）"><circle cx="65" cy="90" r="18" fill="transparent"/><circle cx="65" cy="90" r="7" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="2"/></g>
+                        <g class="joint" data-type="body" data-name="左肩（前面）"><circle cx="175" cy="90" r="18" fill="transparent"/><circle cx="175" cy="90" r="7" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="2"/></g>
+                        <g class="joint" data-type="body" data-name="右肘"><circle cx="35" cy="150" r="16" fill="transparent"/><circle cx="35" cy="150" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="左肘"><circle cx="205" cy="150" r="16" fill="transparent"/><circle cx="205" cy="150" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="右手首"><circle cx="15" cy="205" r="16" fill="transparent"/><circle cx="15" cy="205" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="左手首"><circle cx="225" cy="205" r="16" fill="transparent"/><circle cx="225" cy="205" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                    </svg>
+
+                    <svg id="map-upper-back" class="map-view w-auto h-[280px] hidden" viewBox="0 0 240 240">
+                        <circle cx="120" cy="45" r="18" fill="#475569"/>
+                        <path d="M 110 60 L 130 60 L 134 80 L 106 80 Z" fill="#475569"/>
+                        <path d="M 65 90 L 175 90 L 160 210 L 80 210 Z" fill="#475569"/>
+                        <line x1="120" y1="80" x2="120" y2="210" stroke="#334155" stroke-width="2" stroke-dasharray="4"/>
+                        <line x1="65" y1="90" x2="35" y2="150" stroke="#475569" stroke-width="18" stroke-linecap="round"/>
+                        <line x1="175" y1="90" x2="205" y2="150" stroke="#475569" stroke-width="18" stroke-linecap="round"/>
+                        <g class="joint" data-type="body" data-name="首（左・後）"><circle cx="106" cy="72" r="14" fill="transparent"/><circle cx="106" cy="72" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="首（中央・後）"><circle cx="120" cy="74" r="14" fill="transparent"/><circle cx="120" cy="74" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="首（右・後）"><circle cx="134" cy="72" r="14" fill="transparent"/><circle cx="134" cy="72" r="5.5" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="左肩（背面）"><circle cx="65" cy="90" r="18" fill="transparent"/><circle cx="65" cy="90" r="7" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="2"/></g>
+                        <g class="joint" data-type="body" data-name="右肩（背面）"><circle cx="175" cy="90" r="18" fill="transparent"/><circle cx="175" cy="90" r="7" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="2"/></g>
+                        <g class="joint" data-type="body" data-name="左背中"><circle cx="95" cy="130" r="16" fill="transparent"/><circle cx="95" cy="130" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="右背中"><circle cx="145" cy="130" r="16" fill="transparent"/><circle cx="145" cy="130" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="左腰"><circle cx="95" cy="180" r="16" fill="transparent"/><circle cx="95" cy="180" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                        <g class="joint" data-type="body" data-name="右腰"><circle cx="145" cy="180" r="16" fill="transparent"/><circle cx="145" cy="180" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc" stroke-width="1.5"/></g>
+                    </svg>
+
+                    <svg id="map-lower" class="map-view w-auto h-[280px] hidden" viewBox="0 0 240 240">
+                        <path d="M 30 35 L 100 35 L 90 65 L 40 65 Z" fill="#334155"/>
+                        <line x1="45" y1="50" x2="45" y2="125" stroke="#334155" stroke-width="22" stroke-linecap="round"/>
+                        <line x1="45" y1="125" x2="45" y2="205" stroke="#334155" stroke-width="16" stroke-linecap="round"/>
+                        <line x1="85" y1="50" x2="85" y2="125" stroke="#334155" stroke-width="22" stroke-linecap="round"/>
+                        <line x1="85" y1="125" x2="85" y2="205" stroke="#334155" stroke-width="16" stroke-linecap="round"/>
+                        <g class="joint" data-type="body" data-name="右股関節"><circle cx="45" cy="50" r="15" fill="transparent"/><circle cx="45" cy="50" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="左股関節"><circle cx="85" cy="50" r="15" fill="transparent"/><circle cx="85" cy="50" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="右膝（前面）"><circle cx="45" cy="125" r="16" fill="transparent"/><circle cx="45" cy="125" r="6.5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="左膝（前面）"><circle cx="85" cy="125" r="16" fill="transparent"/><circle cx="85" cy="125" r="6.5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="右足首"><circle cx="45" cy="205" r="15" fill="transparent"/><circle cx="45" cy="205" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="左足首"><circle cx="85" cy="205" r="15" fill="transparent"/><circle cx="85" cy="205" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <path d="M 140 35 L 210 35 L 200 65 L 150 65 Z" fill="#475569"/>
+                        <line x1="155" y1="50" x2="155" y2="125" stroke="#475569" stroke-width="22" stroke-linecap="round"/>
+                        <line x1="155" y1="125" x2="155" y2="205" stroke="#475569" stroke-width="16" stroke-linecap="round"/>
+                        <line x1="195" y1="50" x2="195" y2="125" stroke="#475569" stroke-width="22" stroke-linecap="round"/>
+                        <line x1="195" y1="125" x2="195" y2="205" stroke="#475569" stroke-width="16" stroke-linecap="round"/>
+                        <g class="joint" data-type="body" data-name="左おしり"><circle cx="155" cy="55" r="15" fill="transparent"/><circle cx="155" cy="55" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="右おしり"><circle cx="195" cy="55" r="15" fill="transparent"/><circle cx="195" cy="55" r="6" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="左膝裏"><circle cx="155" cy="125" r="16" fill="transparent"/><circle cx="155" cy="125" r="6.5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                        <g class="joint" data-type="body" data-name="右膝裏"><circle cx="195" cy="125" r="16" fill="transparent"/><circle cx="195" cy="125" r="6.5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g>
+                    </svg>
+
+                    <svg id="map-hand-right" class="map-view w-auto h-[280px] hidden" viewBox="0 0 240 240"><path d="M 80 220 L 160 220 L 180 145 L 60 145 Z" fill="#334155"/><line x1="75" y1="160" x2="45" y2="140" stroke="#334155" stroke-width="14" stroke-linecap="round"/><line x1="45" y1="140" x2="25" y2="115" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="90" y1="145" x2="90" y2="40" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="120" y1="145" x2="120" y2="25" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="150" y1="145" x2="150" y2="40" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="175" y1="148" x2="190" y2="65" stroke="#334155" stroke-width="10" stroke-linecap="round"/><g class="joint" data-type="hand" data-name="親指・第一(IP)"><circle cx="25" cy="115" r="14" fill="transparent"/><circle cx="25" cy="115" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="親指・第二(MCP)"><circle cx="45" cy="140" r="14" fill="transparent"/><circle cx="45" cy="140" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="親指・付け根(CM)"><circle cx="75" cy="160" r="14" fill="transparent"/><circle cx="75" cy="160" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="人差指・第一(DIP)"><circle cx="90" cy="40" r="14" fill="transparent"/><circle cx="90" cy="40" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="人差指・第二(PIP)"><circle cx="90" cy="75" r="14" fill="transparent"/><circle cx="90" cy="75" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="人差指・付け根(MCP)"><circle cx="90" cy="110" r="14" fill="transparent"/><circle cx="90" cy="110" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="中指・第一(DIP)"><circle cx="120" cy="25" r="14" fill="transparent"/><circle cx="120" cy="25" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="中指・第二(PIP)"><circle cx="120" cy="65" r="14" fill="transparent"/><circle cx="120" cy="65" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="中指・付け根(MCP)"><circle cx="120" cy="105" r="14" fill="transparent"/><circle cx="120" cy="105" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="薬指・第一(DIP)"><circle cx="150" cy="40" r="14" fill="transparent"/><circle cx="150" cy="40" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="薬指・第二(PIP)"><circle cx="150" cy="75" r="14" fill="transparent"/><circle cx="150" cy="75" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="薬指・付け根(MCP)"><circle cx="150" cy="110" r="14" fill="transparent"/><circle cx="150" cy="110" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="小指・第一(DIP)"><circle cx="190" cy="65" r="14" fill="transparent"/><circle cx="190" cy="65" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="小指・第二(PIP)"><circle cx="184" cy="95" r="14" fill="transparent"/><circle cx="184" cy="95" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="小指・付け根(MCP)"><circle cx="178" cy="125" r="14" fill="transparent"/><circle cx="178" cy="125" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g></svg>
+                    <svg id="map-hand-left" class="map-view w-auto h-[280px] hidden" viewBox="0 0 240 240"><path d="M 160 220 L 80 220 L 60 145 L 180 145 Z" fill="#334155"/><line x1="165" y1="160" x2="195" y2="140" stroke="#334155" stroke-width="14" stroke-linecap="round"/><line x1="195" y1="140" x2="215" y2="115" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="150" y1="145" x2="150" y2="40" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="120" y1="145" x2="120" y2="25" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="90" y1="145" x2="90" y2="40" stroke="#334155" stroke-width="12" stroke-linecap="round"/><line x1="65" y1="148" x2="50" y2="65" stroke="#334155" stroke-width="10" stroke-linecap="round"/><g class="joint" data-type="hand" data-name="親指・第一(IP)"><circle cx="215" cy="115" r="14" fill="transparent"/><circle cx="215" cy="115" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="親指・第二(MCP)"><circle cx="195" cy="140" r="14" fill="transparent"/><circle cx="195" cy="140" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="親指・付け根(CM)"><circle cx="165" cy="160" r="14" fill="transparent"/><circle cx="165" cy="160" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="人差指・第一(DIP)"><circle cx="150" cy="40" r="14" fill="transparent"/><circle cx="150" cy="40" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="人差指・第二(PIP)"><circle cx="150" cy="75" r="14" fill="transparent"/><circle cx="150" cy="75" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="人差指・付け根(MCP)"><circle cx="150" cy="110" r="14" fill="transparent"/><circle cx="150" cy="110" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="中指・第一(DIP)"><circle cx="120" cy="25" r="14" fill="transparent"/><circle cx="120" cy="25" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="中指・第二(PIP)"><circle cx="120" cy="65" r="14" fill="transparent"/><circle cx="120" cy="65" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="中指・付け根(MCP)"><circle cx="120" cy="105" r="14" fill="transparent"/><circle cx="120" cy="105" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="薬指・第一(DIP)"><circle cx="90" cy="40" r="14" fill="transparent"/><circle cx="90" cy="40" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="薬指・第二(PIP)"><circle cx="90" cy="75" r="14" fill="transparent"/><circle cx="90" cy="75" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="薬指・付け根(MCP)"><circle cx="90" cy="110" r="14" fill="transparent"/><circle cx="90" cy="110" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="小指・第一(DIP)"><circle cx="50" cy="65" r="14" fill="transparent"/><circle cx="50" cy="65" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="小指・第二(PIP)"><circle cx="56" cy="95" r="14" fill="transparent"/><circle cx="56" cy="95" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="hand" data-name="小指・付け根(MCP)"><circle cx="62" cy="125" r="14" fill="transparent"/><circle cx="62" cy="125" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g></svg>
+
+<svg id="map-foot-right" class="map-view w-auto h-[280px] hidden" viewBox="0 0 240 240"><path d="M 80 220 L 160 220 L 200 140 L 50 140 Z" fill="#475569"/><line x1="75" y1="140" x2="75" y2="70" stroke="#475569" stroke-width="16" stroke-linecap="round"/><line x1="105" y1="140" x2="105" y2="85" stroke="#475569" stroke-width="12" stroke-linecap="round"/><line x1="135" y1="140" x2="135" y2="90" stroke="#475569" stroke-width="12" stroke-linecap="round"/><line x1="165" y1="140" x2="165" y2="98" stroke="#475569" stroke-width="11" stroke-linecap="round"/><line x1="195" y1="140" x2="195" y2="110" stroke="#475569" stroke-width="10" stroke-linecap="round"/><g class="joint" data-type="foot" data-name="親指・第一(IP)"><circle cx="75" cy="70" r="14" fill="transparent"/><circle cx="75" cy="70" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="親指・付け根(MTP★)"><circle cx="75" cy="130" r="16" fill="transparent"/><circle cx="75" cy="130" r="6" class="dot" fill="#475569" stroke="#ef4444" stroke-width="2"/></g><g class="joint" data-type="foot" data-name="人差指・先側"><circle cx="105" cy="85" r="14" fill="transparent"/><circle cx="105" cy="85" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="人差指・付け根(MTP)"><circle cx="105" cy="125" r="14" fill="transparent"/><circle cx="105" cy="125" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="中指・先側"><circle cx="135" cy="90" r="14" fill="transparent"/><circle cx="135" cy="90" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="中指・付け根(MTP)"><circle cx="135" cy="125" r="14" fill="transparent"/><circle cx="135" cy="125" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="薬指・先側"><circle cx="165" cy="98" r="14" fill="transparent"/><circle cx="165" cy="98" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="薬指・付け根(MTP)"><circle cx="165" cy="130" r="14" fill="transparent"/><circle cx="165" cy="130" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="小指・先側"><circle cx="195" cy="110" r="14" fill="transparent"/><circle cx="195" cy="110" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="小指・付け根(MTP)"><circle cx="195" cy="135" r="14" fill="transparent"/><circle cx="195" cy="135" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g></svg>
+                    <svg id="map-foot-left" class="map-view w-auto h-[280px] hidden" viewBox="0 0 240 240"><path d="M 160 220 L 80 220 L 40 140 L 190 140 Z" fill="#475569"/><line x1="165" y1="140" x2="165" y2="70" stroke="#475569" stroke-width="16" stroke-linecap="round"/><line x1="135" y1="140" x2="135" y2="85" stroke="#475569" stroke-width="12" stroke-linecap="round"/><line x1="105" y1="140" x2="105" y2="90" stroke="#475569" stroke-width="12" stroke-linecap="round"/><line x1="75" y1="140" x2="75" y2="98" stroke="#475569" stroke-width="11" stroke-linecap="round"/><line x1="45" y1="140" x2="45" y2="110" stroke="#475569" stroke-width="10" stroke-linecap="round"/><g class="joint" data-type="foot" data-name="親指・第一(IP)"><circle cx="165" cy="70" r="14" fill="transparent"/><circle cx="165" cy="70" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="親指・付け根(MTP★)"><circle cx="165" cy="130" r="16" fill="transparent"/><circle cx="165" cy="130" r="6" class="dot" fill="#475569" stroke="#ef4444" stroke-width="2"/></g><g class="joint" data-type="foot" data-name="人差指・先側"><circle cx="135" cy="85" r="14" fill="transparent"/><circle cx="135" cy="85" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="人差指・付け根(MTP)"><circle cx="135" cy="125" r="14" fill="transparent"/><circle cx="135" cy="125" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="中指・先側"><circle cx="105" cy="90" r="14" fill="transparent"/><circle cx="105" cy="90" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="中指・付け根(MTP)"><circle cx="105" cy="125" r="14" fill="transparent"/><circle cx="105" cy="125" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="薬指・先側"><circle cx="75" cy="98" r="14" fill="transparent"/><circle cx="75" cy="98" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="薬指・付け根(MTP)"><circle cx="75" cy="130" r="14" fill="transparent"/><circle cx="75" cy="130" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="小指・先側"><circle cx="45" cy="110" r="14" fill="transparent"/><circle cx="45" cy="110" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g><g class="joint" data-type="foot" data-name="小指・付け根(MTP)"><circle cx="45" cy="135" r="14" fill="transparent"/><circle cx="45" cy="135" r="5" class="dot" fill="#94a3b8" stroke="#f8fafc"/></g></svg>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider">部位別の詳細痛度</label>
+                <div id="joints-input-container" class="space-y-3">
+                    <span class="text-xs text-slate-400 italic block py-2 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                        上のイラストで部位をタップすると、ここに各部位専用の入力欄が表示されます。
+                    </span>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-5">
+                <div>
+                    <h3 class="text-sm font-bold text-slate-900">前日のライフログ（24h〜48h前の事実）</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">※デフォルトは「3（普通）」または「なし」です</p>
+                </div>
+
+                <div class="space-y-3 pt-2 border-t border-slate-100">
+                    <h4 class="text-xs font-bold text-blue-600 tracking-wide uppercase">🏃 前日の行動量</h4>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-700">
+                            <span>PC・デスクワーク作業量</span>
+                            <span class="text-slate-400 text-[11px] font-normal">1:極小 〜 5:長時間</span>
+                        </div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_pc" value="1" class="sr-only">1</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_pc" value="2" class="sr-only">2</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_pc" value="3" class="sr-only" checked>3</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_pc" value="4" class="sr-only">4</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_pc" value="5" class="sr-only">5</label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-700">
+                            <span>スマホ操作量</span>
+                            <span class="text-slate-400 text-[11px] font-normal">1:極小 〜 5:長時間</span>
+                        </div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_phone" value="1" class="sr-only">1</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_phone" value="2" class="sr-only">2</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_phone" value="3" class="sr-only" checked>3</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_phone" value="4" class="sr-only">4</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_phone" value="5" class="sr-only">5</label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-700">歩行距離</label>
+                        <div class="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 min-w-[70px] text-center py-2 text-[11px] rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_walk" value="0.5km以下" class="sr-only">0.5k↓</label>
+                            <label class="flex-1 min-w-[70px] text-center py-2 text-[11px] rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_walk" value="1.5km" class="sr-only" checked>1.5km</label>
+                            <label class="flex-1 min-w-[70px] text-center py-2 text-[11px] rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_walk" value="3km" class="sr-only">3.0km</label>
+                            <label class="flex-1 min-w-[70px] text-center py-2 text-[11px] rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_walk" value="4.5km" class="sr-only">4.5km</label>
+                            <label class="flex-1 min-w-[70px] text-center py-2 text-[11px] rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_walk" value="5km以上" class="sr-only">5k↑</label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-700">運動強度</label>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_exercise" value="なし" class="sr-only" checked>なし</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_exercise" value="軽め" class="sr-only">軽め</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_exercise" value="普通" class="sr-only">普通</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-blue-600 text-slate-500"><input type="radio" name="log_exercise" value="激しめ" class="sr-only">激しめ</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-3 pt-4 border-t border-slate-100">
+                    <h4 class="text-xs font-bold text-emerald-600 tracking-wide uppercase">🍽 前日の飲食量と栄養バランス</h4>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-700">糖質（炭水化物）</span></div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_carbs" value="1" class="sr-only">1<span class="block text-[8px] font-normal">極小</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_carbs" value="2" class="sr-only">2<span class="block text-[8px] font-normal">少なめ</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_carbs" value="3" class="sr-only" checked>3<span class="block text-[8px] font-normal">普通</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_carbs" value="4" class="sr-only">4<span class="block text-[8px] font-normal">多め</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_carbs" value="5" class="sr-only">5<span class="block text-[8px] font-normal">ドカ食</span></label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-700">脂質</span></div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_fat" value="1" class="sr-only">1<span class="block text-[8px] font-normal">極小</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_fat" value="2" class="sr-only">2<span class="block text-[8px] font-normal">少なめ</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_fat" value="3" class="sr-only" checked>3<span class="block text-[8px] font-normal">普通</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_fat" value="4" class="sr-only">4<span class="block text-[8px] font-normal">多め</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_fat" value="5" class="sr-only">5<span class="block text-[8px] font-normal">油過多</span></label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-700">グルテン（小麦製品）</span></div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_gluten" value="1" class="sr-only">1<span class="block text-[8px] font-normal">除去</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_gluten" value="2" class="sr-only">2<span class="block text-[8px] font-normal">1食</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_gluten" value="3" class="sr-only" checked>3<span class="block text-[8px] font-normal">普通</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_gluten" value="4" class="sr-only">4<span class="block text-[8px] font-normal">全食</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_gluten" value="5" class="sr-only">5<span class="block text-[8px] font-normal">大量</span></label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-700">野菜摂取量</span></div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vegetables" value="1" class="sr-only">1<span class="block text-[8px] font-normal">ほぼ無</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vegetables" value="2" class="sr-only">2<span class="block text-[8px] font-normal">少なめ</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vegetables" value="3" class="sr-only" checked>3<span class="block text-[8px] font-normal">目標値</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vegetables" value="4" class="sr-only">4<span class="block text-[8px] font-normal font-bold text-emerald-600">多め</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vegetables" value="5" class="sr-only">5<span class="block text-[8px] font-normal">大量</span></label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-700">アルコール</span></div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_alcohol" value="1" class="sr-only" checked>1<span class="block text-[8px] font-normal">なし</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_alcohol" value="2" class="sr-only">2<span class="block text-[8px] font-normal">350ml</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_alcohol" value="3" class="sr-only">3<span class="block text-[8px] font-normal">中瓶1</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_alcohol" value="4" class="sr-only">4<span class="block text-[8px] font-normal">多め</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_alcohol" value="5" class="sr-only">5<span class="block text-[8px] font-normal">深酒</span></label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-xs font-bold text-slate-700">ビタミン剤</label>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vitamin" value="なし" class="sr-only" checked>なし</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vitamin" value="サプリ" class="sr-only">サプリ</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vitamin" value="ドリンク" class="sr-only">ドリンク</label>
+                            <label class="flex-1 text-center py-2 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_vitamin" value="両方" class="sr-only">両方</label>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-baseline"><span class="text-xs font-bold text-slate-700">純粋な水分補給（水・お茶等）</span></div>
+                        <div class="flex gap-1 bg-slate-100 p-1 rounded-xl">
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_water" value="1" class="sr-only">1<span class="block text-[8px] font-normal">脱水</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_water" value="2" class="sr-only">2<span class="block text-[8px] font-normal">少なめ</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_water" value="3" class="sr-only" checked>3<span class="block text-[8px] font-normal">十分</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_water" value="4" class="sr-only">4<span class="block text-[8px] font-normal">多め</span></label>
+                            <label class="flex-1 text-center py-1.5 text-xs rounded-lg font-bold cursor-pointer transition-all has-[:checked]:bg-white has-[:checked]:text-emerald-600 text-slate-500"><input type="radio" name="log_water" value="5" class="sr-only">5<span class="block text-[8px] font-normal">大量</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">メモ</label>
+                <textarea id="memo" rows="2" placeholder="自由入力..." class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md active:scale-[0.99] transition-transform flex justify-center items-center gap-2">
+                <span>記録を保存・クラウド同期</span>
+            </button>
+        </form>
+
+        <div class="mt-6 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-sm font-bold text-slate-900">ローカルバックアップ管理</h2>
+                <span id="recordCount" class="text-[11px] bg-slate-100 px-2 py-0.5 rounded-full text-slate-600 font-medium">0件</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <button id="downloadCsv" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-3 rounded-xl text-xs transition-colors">📊 CSV抽出</button>
+                <button id="clearData" class="bg-rose-50 text-rose-600 hover:bg-rose-100 font-medium py-2 px-3 rounded-xl text-xs transition-colors">🗑 全消去</button>
+            </div>
+            <div class="mt-4 border-t border-slate-100 pt-3">
+                <h3 class="text-xs font-bold text-slate-400 uppercase mb-2">直近のタイムライン履歴</h3>
+                <div id="historyList" class="space-y-2 max-h-48 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'joint_lifestyle_records_v13';
+        const URL_STORAGE_KEY = 'joint_log_gas_url_v13';
+        const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzQHh3MaP4owsHfMJvdX2Oql_1NmKcTIQpdWZ_1S_akFRsdTfgGYMVE1YlAcvWkLMbd/exec';
+        let currentMap = 'upper-front';
+        let currentSide = '右'; 
+        let selectedJoints = []; 
+
+        // URLのロード＆セーブ
+        document.getElementById('gasUrl').addEventListener('input', (e) => {
+            localStorage.setItem(URL_STORAGE_KEY, e.target.value.trim());
+        });
+
+        function switchMap(mapId) {
+            currentMap = mapId;
+            ['upper-front', 'upper-back', 'lower', 'hand', 'foot'].forEach(id => {
+                const tab = document.getElementById(`tab-${id}`);
+                tab.className = "flex-1 text-center py-2 rounded-lg transition-all text-slate-600";
+            });
+            document.getElementById(`tab-${mapId}`).className = "flex-1 text-center py-2 rounded-lg transition-all bg-white shadow-sm font-bold text-blue-600";
+            const switcher = document.getElementById('side-switcher');
+            switcher.className = (mapId === 'hand' || mapId === 'foot') ? "flex justify-center gap-2 pt-1" : "hidden";
+            updateMapVisibility();
+        }
+
+        function setSide(side) {
+            currentSide = side;
+            document.getElementById('side-left').className = side === '左' ? "px-4 py-1.5 rounded-full text-xs font-bold border border-blue-500 bg-blue-50 text-blue-600" : "px-4 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-700";
+            document.getElementById('side-right').className = side === '右' ? "px-4 py-1.5 rounded-full text-xs font-bold border border-blue-500 bg-blue-50 text-blue-600" : "px-4 py-1.5 rounded-full text-xs font-bold border border-slate-200 bg-white text-slate-700";
+            updateMapVisibility();
+        }
+
+        function updateMapVisibility() {
+            document.querySelectorAll('.map-view').forEach(el => el.classList.add('hidden'));
+            if (currentMap === 'hand' || currentMap === 'foot') {
+                document.getElementById(`map-${currentMap}-${currentSide === '左' ? 'left' : 'right'}`).classList.remove('hidden');
+            } else {
+                document.getElementById(`map-${currentMap}`).classList.remove('hidden');
+            }
+            updateMapVisuals();
+        }
+
+        function getFullJointName(element) {
+            const type = element.getAttribute('data-type');
+            const baseName = element.getAttribute('data-name');
+            return type === 'body' ? baseName : `${currentSide}${type === 'hand' ? '手' : '足'}・${baseName}`;
+        }
+
+        document.querySelectorAll('.joint').forEach(el => {
+            el.addEventListener('click', function() {
+                const fullName = getFullJointName(this);
+                const existIndex = selectedJoints.findIndex(j => j.name === fullName);
+                if (existIndex > -1) { selectedJoints.splice(existIndex, 1); } 
+                else { selectedJoints.push({ name: fullName, pain_level: 5, swelling: false }); }
+                updateMapVisuals();
+                renderJointInputs();
+            });
+        });
+
+        function updateMapVisuals() {
+            document.querySelectorAll('.joint').forEach(el => {
+                const fullName = getFullJointName(el);
+                const dot = el.querySelector('.dot');
+                if (selectedJoints.some(j => j.name === fullName)) {
+                    dot.setAttribute('fill', '#ef4444'); dot.setAttribute('stroke', '#ffffff'); dot.setAttribute('r', '7');
+                } else {
+                    if (el.getAttribute('data-name').includes('MTP★')) {
+                        dot.setAttribute('fill', '#475569'); dot.setAttribute('stroke', '#ef4444'); dot.setAttribute('r', '6');
+                    } else if (el.getAttribute('data-name').includes('肩') || el.getAttribute('data-name').includes('頭') || el.getAttribute('data-name').includes('顎')) {
+                        dot.setAttribute('fill', '#94a3b8'); dot.setAttribute('stroke', '#f8fafc'); dot.setAttribute('r', '7');
+                    } else {
+                        dot.setAttribute('fill', '#94a3b8'); dot.setAttribute('stroke', '#f8fafc'); dot.setAttribute('r', '5.5');
+                    }
+                }
+            });
+        }
+
+        function renderJointInputs() {
+            const container = document.getElementById('joints-input-container');
+            container.innerHTML = selectedJoints.length === 0 ? `<span class="text-xs text-slate-400 italic block py-2 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">部位をタップすると、入力欄が表示されます。</span>` : '';
+            selectedJoints.forEach((joint, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2 relative";
+                wrapper.innerHTML = `
+                    <div class="flex justify-between items-center pr-6"><span class="text-xs font-bold text-slate-800">📍 ${joint.name}</span><span class="text-sm font-black text-blue-600" id="val-${index}">${joint.pain_level}</span></div>
+                    <div class="flex items-center gap-2"><span class="text-[10px] text-slate-400 font-bold">軽</span><input type="range" min="1" max="10" value="${joint.pain_level}" class="w-full h-2 bg-slate-200 rounded-lg appearance-none accent-blue-600" oninput="updateSingleJointPain(${index}, this.value)"><span class="text-[10px] text-red-500 font-bold">激痛</span></div>
+                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60"><label class="text-[11px] font-medium text-slate-600 cursor-pointer flex items-center gap-1.5"><input type="checkbox" ${joint.swelling ? 'checked' : ''} class="w-4 h-4 text-blue-600 rounded" onchange="updateSingleJointSwelling(${index}, this.checked)">明らかな腫れ・赤みあり</label><button type="button" class="text-[11px] text-rose-500 font-bold" onclick="removeJointByIndex(${index})">削除</button></div>`;
+                container.appendChild(wrapper);
+            });
+        }
+
+        function updateSingleJointPain(index, value) { selectedJoints[index].pain_level = parseInt(value); document.getElementById(`val-${index}`).textContent = value; }
+        function updateSingleJointSwelling(index, isChecked) { selectedJoints[index].swelling = isChecked; }
+        function removeJointByIndex(index) { selectedJoints.splice(index, 1); updateMapVisuals(); renderJointInputs(); }
+        function setCurrentDateTime() { const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); document.getElementById('datetime').value = now.toISOString().slice(0, 16); }
+
+        // サブミット処理 (ローカル保存 ＋ クラウド同期送信)
+        document.getElementById('trackerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (selectedJoints.length === 0) { alert('エラー: 痛む部位を1箇所以上選択してください。'); return; }
+
+            const gasUrl = localStorage.getItem(URL_STORAGE_KEY) || DEFAULT_GAS_URL;
+            const getSelectedRadio = (name) => document.querySelector(`input[name="${name}"]:checked`).value;
+            const jointsStr = selectedJoints.map(j => `${j.name}[度:${j.pain_level}|腫:${j.swelling?'有':'無'}]`).join(' | ');
+
+            const payload = {
+                datetime: document.getElementById('datetime').value.replace('T', ' '),
+                joints_str: jointsStr,
+                lifestyle: {
+                    pc: parseInt(getSelectedRadio('log_pc')),
+                    phone: parseInt(getSelectedRadio('log_phone')),
+                    walk: getSelectedRadio('log_walk'),
+                    exercise: getSelectedRadio('log_exercise'),
+                    carbs: parseInt(getSelectedRadio('log_carbs')),
+                    fat: parseInt(getSelectedRadio('log_fat')),
+                    gluten: parseInt(getSelectedRadio('log_gluten')),
+                    vegetables: parseInt(getSelectedRadio('log_vegetables')),
+                    alcohol: parseInt(getSelectedRadio('log_alcohol')),
+                    vitamin: getSelectedRadio('log_vitamin'),
+                    water: parseInt(getSelectedRadio('log_water'))
+                },
+                memo: document.getElementById('memo').value
+            };
+
+            // 1. ローカル保存（バックアップ＆履歴表示用）
+            const newRecord = { datetime: document.getElementById('datetime').value, joints: JSON.parse(JSON.stringify(selectedJoints)), lifestyle: payload.lifestyle, memo: payload.memo };
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            records.push(newRecord);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+
+            // 2. クラウド同期処理（GASへのPOST送信）
+            const submitBtn = document.getElementById('submitBtn');
+            const originalBtnHtml = submitBtn.innerHTML;
+
+            if (gasUrl) {
+                submitBtn.disabled = true;
+                submitBtn.className = "w-full bg-slate-400 text-white font-bold py-3 px-4 rounded-xl flex justify-center items-center gap-2 cursor-not-allowed";
+                submitBtn.innerHTML = `<span>⏳ クラウド同期中...</span>`;
+
+                try {
+                    await fetch(gasUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain' },
+                        body: JSON.stringify(payload)
+                    });
+                    alert('保存成功：スプレッドシートと同期しました！');
+                } catch (err) {
+                    console.error(err);
+                    alert('ローカル保存は完了しましたが、クラウド同期に失敗しました。URLを確認するか電波の良い環境でお試しください。');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.className = "w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl shadow-md active:scale-[0.99] transition-transform flex justify-center items-center gap-2";
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
+            } else {
+                alert('ローカルに保存しました。（※URL未設定のためクラウド同期はスキップされました）');
+            }
+
+            // 共通リセット処理
+            document.getElementById('memo').value = '';
+            selectedJoints = [];
+            setCurrentDateTime();
+            updateMapVisuals();
+            renderJointInputs();
+            loadRecords();
+        });
+
+        function loadRecords() {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            document.getElementById('recordCount').textContent = `${records.length} 件`;
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = records.length === 0 ? '<p class="text-xs text-slate-400 italic">履歴はありません</p>' : '';
+            records.slice().reverse().forEach(rec => {
+                const div = document.createElement('div');
+                div.className = 'p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs space-y-1.5';
+                let jsHtml = ''; rec.joints.forEach(j => { jsHtml += `<span class="inline-block bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-700 font-medium m-0.5">${j.name} <b class="text-blue-600">(${j.pain_level})</b>${j.swelling ? ' <b class="text-rose-500">腫</b>' : ''}</span>`; });
+                div.innerHTML = `<div class="flex justify-between items-center font-bold text-slate-400 text-[10px]"><span>${rec.datetime.replace('T', ' ')}</span></div><div class="flex flex-wrap gap-0.5">${jsHtml}</div>`;
+                historyList.appendChild(div);
+            });
+        }
+
+        document.getElementById('downloadCsv').addEventListener('click', () => {
+            const records = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            if (records.length === 0) { alert('データがありません。'); return; }
+            let csv = "\uFEFF日時,判定部位別詳細,前日_PC,前日_スマホ,前日_歩行,前日_運動,前日_糖質,前日_脂質,前日_グルテン,前日_野菜,前日_アルコール,前日_ビタミン,前日_水分,自由メモ\n";
+            records.forEach(r => { const jStr = `"${r.joints.map(j=>`${j.name}[${j.pain_level}|${j.swelling?'有':'無'}]`).join(' | ')}"`; csv += `${r.datetime.replace('T', ' ')},${jStr},${r.lifestyle.pc},${r.lifestyle.phone},${r.lifestyle.walk},${r.lifestyle.exercise},${r.lifestyle.carbs},${r.lifestyle.fat},${r.lifestyle.gluten},${r.lifestyle.vegetables},${r.lifestyle.alcohol},"${r.lifestyle.vitamin}",${r.lifestyle.water},"${r.memo.replace(/"/g, '""')}"\n`; });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `joint_backup_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('clearData').addEventListener('click', () => { if (confirm('ローカルのバックアップ履歴を全消去しますか？（スプレッドシートのデータは消えません）')) { localStorage.removeItem(STORAGE_KEY); selectedJoints = []; updateMapVisuals(); renderJointInputs(); loadRecords(); } });
+
+        window.addEventListener('DOMContentLoaded', () => {
+            let savedUrl = localStorage.getItem(URL_STORAGE_KEY);
+            if (!savedUrl) {
+                savedUrl = DEFAULT_GAS_URL;
+                localStorage.setItem(URL_STORAGE_KEY, savedUrl);
+            }
+            document.getElementById('gasUrl').value = savedUrl;
+            setCurrentDateTime(); loadRecords();
+        });
+    </script>
+</body>
+</html>
